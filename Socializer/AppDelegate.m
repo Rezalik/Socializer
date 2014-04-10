@@ -8,14 +8,36 @@
 
 #import "AppDelegate.h"
 
+#import "Socializer.h"
+
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     // Override point for customization after application launch.
+    [[Socializer sharedManager] isAuthorizedAnySocial];
     return YES;
 }
-							
+
+-(BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation{
+    NSLog(@"application openURL %@",url);
+    BOOL wasHandled = NO;
+    if ([[url absoluteString] rangeOfString:[NSString stringWithFormat:@"vk%@",kVKAppId]].location !=NSNotFound) {
+        wasHandled = [VKSdk processOpenURL:url fromApplication:sourceApplication];
+    }
+    //Facebook.com
+    if ([[url absoluteString] rangeOfString:[NSString stringWithFormat:@"fb%@",kFacebookAppID]].location !=NSNotFound) {
+        // Call FBAppCall's handleOpenURL:sourceApplication to handle Facebook app responses
+        wasHandled = [FBAppCall handleOpenURL:url sourceApplication:sourceApplication withSession:[Socializer sharedManager].fbSession];
+    }
+    //Google
+    if ([[url absoluteString] rangeOfString:@"ru.alexeyivanov.socializer"].location !=NSNotFound) {
+        NSLog(@"google handled");
+        wasHandled = [GPPURLHandler handleURL:url sourceApplication:sourceApplication annotation:annotation];
+    }
+    return wasHandled;
+}
+
 - (void)applicationWillResignActive:(UIApplication *)application
 {
     // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
