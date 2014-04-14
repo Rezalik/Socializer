@@ -7,10 +7,16 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <Accounts/Accounts.h>
+#import <Social/Social.h>
+
 #import "VKSdk.h"
+#import "TWAPIManager.h"
 #import <FacebookSDK/FacebookSDK.h>
 #import <GooglePlus/GooglePlus.h>
 #import <GoogleOpenSource/GoogleOpenSource.h>
+
+
 
 extern NSString* kVKAppId;
 extern NSString* kFacebookAppID;
@@ -50,10 +56,13 @@ extern NSString *kFacebookIdentifier;
 @property (nonatomic,strong) NSString *socialUsername;
 @property (nonatomic,strong) NSString *socialUserEmail;
 @property (nonatomic,strong) NSString *socialIdentificator;
-
+@property (nonatomic,strong) NSString *socialUserAvatar;
+@property (nonatomic,strong) ACAccountStore *accountStore;
+@property (nonatomic,strong) ACAccount *twitterAccount;
 @property (nonatomic,strong)  FBSession *fbSession;
 @property (nonatomic,strong)  GPPSignIn *googleSignIn;
-
+@property (nonatomic, strong) TWAPIManager *twitterAPIManager;
+@property (nonatomic,strong) NSArray* twitterAccounts;
 
 
 //Singleton
@@ -65,6 +74,7 @@ extern NSString *kFacebookIdentifier;
 -(void)loginFacebook;
 -(void)loginGoogle;
 
+- (void)obtainAccessToAccountsWithBlock:(void (^)(BOOL))block;
 //Log OUT methods
 -(void)logOutFromCurrentSocial;
 

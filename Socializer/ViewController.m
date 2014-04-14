@@ -9,7 +9,7 @@
 #import "ViewController.h"
 
 #import "Socializer.h"
-
+#import "NSString+Additions.h"
 
 typedef enum SocialButtonTags {
     SocialButtonTwitter,
@@ -18,7 +18,7 @@ typedef enum SocialButtonTags {
     SocialButtonGoogle
 } SocialButtonTags;
 
-@interface ViewController () <SocializerDelegate>
+@interface ViewController () <SocializerDelegate,UIActionSheetDelegate>
 
 @end
 
@@ -34,9 +34,20 @@ typedef enum SocialButtonTags {
     
     UIBarButtonItem *updateButton = [[UIBarButtonItem alloc]  initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(updateUI)];
     [self.navigationItem setRightBarButtonItem:updateButton];
+    //add observer for twitter accounts store
+    if ([[Socializer sharedManager].socialIdFromDefaults isEqualToString:@"Twitter"]) {
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_refreshTwitterAccounts) name:ACAccountStoreDidChangeNotification object:nil];
+    }
+    
     
 	[self updateUI];
 }
+
+-(void)viewWillDisappear:(BOOL)animated{
+    //remove observer
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 
 -(void)updateUI{
     NSLog(@"updating UI");
@@ -78,6 +89,7 @@ typedef enum SocialButtonTags {
     if ([sender isKindOfClass:[UIButton class]]) {
         switch (((UIButton*)sender).tag) {
             case SocialButtonTwitter:
+                [self _refreshTwitterAccounts];
                 [[Socializer sharedManager] loginTwitter];
                 break;
             case SocialButtonFacebook:
@@ -106,6 +118,7 @@ typedef enum SocialButtonTags {
     [self updateUI];
 }
 -(void)successAuthorizedTwitter{
+    NSLog(@"successAuthorizedTwitter");
     [self updateUI];
 }
 
@@ -120,6 +133,83 @@ typedef enum SocialButtonTags {
     NSLog(@"successLogout");
     [self updateUI];
 }
+
+#pragma mark - Twitter 
+- (void)_refreshTwitterAccounts
+{
+    NSLog(@"Refreshing Twitter Accounts \n");
+    
+    if (![TWAPIManager isLocalTwitterAccountAvailable]) {
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Twitter" message:@"You must add a Twitter account in Settings.app"  delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        [alert show];
+    }
+    else {
+        
+        [[Socializer sharedManager] obtainAccessToAccountsWithBlock:^(BOOL granted) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (granted) {
+                    NSLog(@"GRANTED!");
+                    UIActionSheet *sheet = [[UIActionSheet alloc] initWithTitle:@"Choose an Account"
+                                                                       delegate:self
+                                                              cancelButtonTitle:nil
+                                                         destructiveButtonTitle:nil
+                                                              otherButtonTitles:nil];
+                    for (ACAccount *account in [Socializer sharedManager].twitterAccounts) {
+                        [sheet addButtonWithTitle:account.username];
+                    }
+                    sheet.cancelButtonIndex = [sheet addButtonWithTitle:@"Cancel"];
+                    [sheet showInView:self.view];
+                }
+                else {
+                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Title" message:@"You were not granted access to the Twitter accounts." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+                    [alert show];
+                    NSLog(@"You were not granted access to the Twitter accounts.");
+                }
+            });
+        }];
+    }
+}
+
+
+#pragma mark - UIActionSheet Delegation methods
+-(void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex{
+    if (buttonIndex != actionSheet.cancelButtonIndex) {
+        [[Socializer sharedManager].twitterAPIManager performReverseAuthForAccount:[Socializer sharedManager].twitterAccounts[buttonIndex]
+                                                                withHandler:^(NSData *responseData, NSError *error) {
+            if (responseData) {
+                NSString *responseStr = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+                
+                NSLog(@"Reverse Auth process returned: %@", responseStr);
+                
+                NSArray *parts = [responseStr componentsSeparatedByString:@"&"];
+                NSString *lined = [parts componentsJoinedByString:@"\n"];
+                NSString *token = [responseStr stringBetweenString:@"oauth_token=" andString:@"&"];
+                NSString *userId = [responseStr stringBetweenString:@"user_id=" andString:@"&"];
+                NSString *screenName = [responseStr stringBetweenString:@"screen_name=" andString:@"&"];
+                [Socializer sharedManager].socialIdentificator = kTwitterIdentifier;
+                [Socializer sharedManager].socialAccessToken = token;
+                [Socializer sharedManager].socialUserId = userId;
+                [Socializer sharedManager].socialUsername = screenName;
+                
+                [[Socializer sharedManager] saveAuthUserDataToDefaults];
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Success!" message:lined delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+                    [alert show];
+                    [self updateUI];
+                });
+            }
+            else {
+                NSLog(@"Reverse Auth process failed. Error returned was: %@\n", [error localizedDescription]);
+            }
+        }];
+    }
+
+}
+#pragma mark - helpers
+
+
+#pragma mark -didReceiveMemoryWarning
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
