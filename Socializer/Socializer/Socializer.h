@@ -70,7 +70,7 @@ extern NSString *kFacebookIdentifier;
 
 //Log IN methods
 -(void)loginVK;
--(void)loginTwitter;
+-(void)loginTwitterAccountAtIndex:(NSInteger)index;
 -(void)loginFacebook;
 -(void)loginGoogle;
 

@@ -9,7 +9,7 @@
 #import "ViewController.h"
 
 #import "Socializer.h"
-#import "NSString+Additions.h"
+
 
 typedef enum SocialButtonTags {
     SocialButtonTwitter,
@@ -90,7 +90,7 @@ typedef enum SocialButtonTags {
         switch (((UIButton*)sender).tag) {
             case SocialButtonTwitter:
                 [self _refreshTwitterAccounts];
-                [[Socializer sharedManager] loginTwitter];
+                //[[Socializer sharedManager] loginTwitter];
                 break;
             case SocialButtonFacebook:
                 [[Socializer sharedManager]  loginFacebook];
@@ -174,37 +174,8 @@ typedef enum SocialButtonTags {
 #pragma mark - UIActionSheet Delegation methods
 -(void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex{
     if (buttonIndex != actionSheet.cancelButtonIndex) {
-        [[Socializer sharedManager].twitterAPIManager performReverseAuthForAccount:[Socializer sharedManager].twitterAccounts[buttonIndex]
-                                                                withHandler:^(NSData *responseData, NSError *error) {
-            if (responseData) {
-                NSString *responseStr = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
-                
-                NSLog(@"Reverse Auth process returned: %@", responseStr);
-                
-                NSArray *parts = [responseStr componentsSeparatedByString:@"&"];
-                NSString *lined = [parts componentsJoinedByString:@"\n"];
-                NSString *token = [responseStr stringBetweenString:@"oauth_token=" andString:@"&"];
-                NSString *userId = [responseStr stringBetweenString:@"user_id=" andString:@"&"];
-                NSString *screenName = [responseStr stringBetweenString:@"screen_name=" andString:@"&"];
-                [Socializer sharedManager].socialIdentificator = kTwitterIdentifier;
-                [Socializer sharedManager].socialAccessToken = token;
-                [Socializer sharedManager].socialUserId = userId;
-                [Socializer sharedManager].socialUsername = screenName;
-                
-                [[Socializer sharedManager] saveAuthUserDataToDefaults];
-                
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Success!" message:lined delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-                    [alert show];
-                    [self updateUI];
-                });
-            }
-            else {
-                NSLog(@"Reverse Auth process failed. Error returned was: %@\n", [error localizedDescription]);
-            }
-        }];
+        [[Socializer sharedManager] loginTwitterAccountAtIndex:buttonIndex];
     }
-
 }
 #pragma mark - helpers
 

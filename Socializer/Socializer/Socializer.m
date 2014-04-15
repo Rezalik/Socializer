@@ -7,6 +7,7 @@
 //
 
 #import "Socializer.h"
+#import "NSString+Additions.h"
 
 NSString *kVkontakteIdentifier = @"Vkontakte";
 NSString *kGoogleIdentifier = @"Google";
@@ -135,54 +136,24 @@ NSString* kSocializerSocialUserEmail = @"SOCIALIZER_SOCIAL_USER_EMAIL";
     [self.googleSignIn authenticate];
 }
 
--(void)loginTwitter{
-/*
-    ACAccountType *twitterAccountType =[self.accountStore accountTypeWithAccountTypeIdentifier:ACAccountTypeIdentifierTwitter];
-//    __block ACAccountStore*__accountStore = _accountStore;
-//    __block ACAccount *__twitterAccount = _twitterAccount;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-                   ^{
-       [self.accountStore requestAccessToAccountsWithType:twitterAccountType options:nil
-                                               completion:^(BOOL granted, NSError *error) {
-                                                  
-                                                   if (granted) {
-                                                       NSArray *twitterAccounts = [self.accountStore accountsWithAccountType:twitterAccountType];
-                                                       NSString *twitterAccountId = [[NSUserDefaults standardUserDefaults]
-                                                                                     objectForKey:kSelectedTwitterAccountId];
-                                                      
-                                                       _twitterAccount = [_accountStore accountWithIdentifier:twitterAccountId];
-                                                       if (_twitterAccount) {
-                                                           
-                                                           [self twitterUserInfo];
-                                                           //[self.delegate successAuthorizedTwitter];
-                                                           
-                                                       }else{
-                                                           [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSelectedTwitterAccountId];
-                                                           [[NSUserDefaults standardUserDefaults] synchronize];
-                                                           if (twitterAccounts.count>1) {
-#warning TODO UIAlert view with twitter accounts
-                                                               NSLog(@"twitterAccounts.count >1!");
-                                                           }else{
-                                                               _twitterAccount = [twitterAccounts lastObject];
-                                                               [self twitterUserInfo];
-                                                               //[self.delegate successAuthorizedTwitter];
-                                                           }
-                                                       }
-                                                       
-                                                   }else{
-                                                       if (error) {
-                                                           NSLog(@"twitter authorization error: \n%@",error);
-                                                           [self.delegate failureAuthorization];
-                                                       }else{
-                                                           NSLog(@"Access to Twitter was not granted.Please go to the device settings and allow access");
-                                                           [self.delegate failureAuthorization];
-                                                       }
-                                                   }
-                                               }];
+-(void)loginTwitterAccountAtIndex:(NSInteger)index{
+    _twitterAccount = _twitterAccounts[index];
+    [_twitterAPIManager performReverseAuthForAccount:_twitterAccount
+                                         withHandler:^(NSData *responseData, NSError *error) {
+                                             if (responseData) {
+                                                 NSString *responseStr = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+                                                 NSLog(@"Reverse Auth process returned: %@", responseStr);
+                                                 
+                                                 NSString *token = [responseStr stringBetweenString:@"oauth_token=" andString:@"&"];
+                                                 [Socializer sharedManager].socialAccessToken = token;
+                                                 [self twitterUserInfo];
+                                                 
+                                             }
+                                             else {
+                                                 NSLog(@"Reverse Auth process failed. Error returned was: %@\n", [error localizedDescription]);
+                                             }
+                                         }];
 
-   });
- */
-    
 }
 
 #pragma mark - Twitter
@@ -307,15 +278,16 @@ NSString* kSocializerSocialUserEmail = @"SOCIALIZER_SOCIAL_USER_EMAIL";
     }
 }
 -(void)twitterUserInfo{
-    NSLog(@"getting user info");
+    NSLog(@"getting twitter user info");
     SLRequest *request =[SLRequest requestForServiceType:SLServiceTypeTwitter
                                            requestMethod:SLRequestMethodGET
                                                      URL:[NSURL URLWithString:@"https://api.twitter.com/1.1/account/verify_credentials.json"]
                                               parameters:nil];
-    NSLog(@"self.twitterAccount %@",self.twitterAccount);
-    NSLog(@"token %@",self.twitterAccount.credential.oauthToken);
-    request.account =self.twitterAccount;
+   
+    request.account =_twitterAccount;
+    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
     [request performRequestWithHandler:^(NSData *responseData, NSHTTPURLResponse *urlResponse, NSError *error) {
+         [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
         if (error) {
             NSLog(@"erro to get user info %@",error);
         }else{
@@ -326,7 +298,7 @@ NSString* kSocializerSocialUserEmail = @"SOCIALIZER_SOCIAL_USER_EMAIL";
             if (jsonError) {
                 NSLog(@"error to json serialization! %@",jsonError);
             }else{
-                NSLog(@"json %@",json);
+                NSLog(@"twitter user info json %@",json);
                 _socialUserId = json[@"id"];
                 _socialIdentificator = kTwitterIdentifier;
                 _socialUsername = json[@"name"];

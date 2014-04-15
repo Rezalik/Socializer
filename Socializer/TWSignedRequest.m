@@ -37,8 +37,8 @@
 #define REQUEST_TIMEOUT_INTERVAL 8
 
 #warning 
-#define kTwitterAPIKey @"88d0daNZvrC22o3VEdIEBg"
-#define kTwitterAPISecret @"9iMEcKOFWRDkMfvZFGXUKJoOX1f172iWjYdE6ANb3lM"
+#define kTwitterAPIKey @"eba6ERe8cHoP5BqejVx1A"
+#define kTwitterAPISecret @"TcVp3MfAdocqJIAb3982Ddy41CCpgV1Y5HZZmsHbF6Q"
 
 static NSString *gTWConsumerKey;
 static NSString *gTWConsumerSecret;
