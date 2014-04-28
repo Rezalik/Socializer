@@ -49,20 +49,17 @@ NSString* kSocializerSocialUserEmail = @"SOCIALIZER_SOCIAL_USER_EMAIL";
     return __sharedManager;
 }
 
--(id)init
+- (instancetype)init
 {
-    self.accountStore = [[ACAccountStore alloc]init];
-    self.twitterAPIManager = [[TWAPIManager alloc] init];
-    
-    return [self initFromUserDefaults];
-}
-//Convenience Initializer
--(id)initFromUserDefaults{
-    if (self = [super init]) {
+    self = [super init];
+    if (self) {
+        self.accountStore = [[ACAccountStore alloc]init];
+        self.twitterAPIManager = [[TWAPIManager alloc] init];
         [self setPropertiesFromUserDefaults];
     }
     return self;
 }
+
 
 -(void)setPropertiesFromUserDefaults{
     if ([[NSUserDefaults standardUserDefaults] objectForKey:kSocializerAuthDict]) {
@@ -80,6 +77,8 @@ NSString* kSocializerSocialUserEmail = @"SOCIALIZER_SOCIAL_USER_EMAIL";
                                                               @"email",
                                                               @"user_likes"
                                                               ]];
+    }else if (_fbSession.state == FBSessionStateClosedLoginFailed || _fbSession.state == FBSessionStateClosed) {
+        [self handleFacebookSessionError];
     }
     return _fbSession;
 }
@@ -382,10 +381,16 @@ NSString* kSocializerSocialUserEmail = @"SOCIALIZER_SOCIAL_USER_EMAIL";
             [self saveAuthUserDataToDefaults];
             [self.delegate successAuthorizedGoogle];
         }
+    }else{
+        NSLog(@"--Google Authorization error %@--",error);
+        [self.delegate failureAuthorization];
     }
 
 }
-
+#pragma mark - Facebook session error handler
+-(void)handleFacebookSessionError{
+    [self.delegate failureAuthorization];
+}
 #pragma mark - UserDefaults manager
 - (NSString*)accessTokenFromDefaults{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
